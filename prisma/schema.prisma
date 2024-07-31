@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model League {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+  tournaments Tournament[]
+}
+
+model Tournament {
+  id       Int     @id @default(autoincrement())
+  name     String
+  leagueId Int?
+  league   League? @relation(fields: [leagueId], references: [id])
+  matches  Match[]
+}
+
+model Player {
+  id    Int          @id @default(autoincrement())
+  name  String
+  email String       @unique
+  teams PlayerTeam[]
+}
+
+model Team {
+  id       Int          @id @default(autoincrement())
+  name     String
+  players  PlayerTeam[]
+  matchesA Match[]      @relation("TeamA")
+  matchesB Match[]      @relation("TeamB")
+}
+
+model PlayerTeam {
+  id       Int    @id @default(autoincrement())
+  playerId Int
+  player   Player @relation(fields: [playerId], references: [id])
+  teamId   Int
+  team     Team   @relation(fields: [teamId], references: [id])
+
+  @@unique([playerId, teamId])
+}
+
+model Match {
+  id           Int         @id @default(autoincrement())
+  tournamentId Int?
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  teamAId      Int
+  teamA        Team        @relation("TeamA", fields: [teamAId], references: [id])
+  teamBId      Int
+  teamB        Team        @relation("TeamB", fields: [teamBId], references: [id])
+  scoreA       Int
+  scoreB       Int
+  rounds       Round[]
+  winnerId     Int?
+}
+
+model Round {
+  id          Int   @id @default(autoincrement())
+  matchId     Int
+  match       Match @relation(fields: [matchId], references: [id])
+  roundNumber Int
+  teamAScore  Int
+  teamBScore  Int
+}
