@@ -6,9 +6,11 @@ export class LeagueService {
   constructor(private prisma: PrismaService) {}
 
   async createLeague(name: string, description?: string) {
-    return this.prisma.league.create({
+    const league = await this.prisma.league.create({
       data: { name, description },
     });
+
+    return league;
   }
 
   async getLeagues() {

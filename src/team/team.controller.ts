@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { TeamService } from './team.service';
-import { TsRestHandler } from '@ts-rest/nest';
+import { TsRestHandler, tsRestHandler } from '@ts-rest/nest';
 import { TeamContract } from './teamContract';
 
 @Controller()
@@ -9,7 +9,7 @@ export class TeamController {
 
   @TsRestHandler(TeamContract)
   async handler() {
-    return {
+    return tsRestHandler(TeamContract, {
       createTeam: async ({ body: { name, playerIds } }) => {
         const team = await this.teamService.createTeam(name, playerIds);
 
@@ -46,6 +46,6 @@ export class TeamController {
           body: playerTeam,
         };
       },
-    };
+    });
   }
 }

@@ -1,80 +1,58 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { MatchLogic } from './matchLogic';
+// import { MatchLogic } from './matchLogic';
 
 @Injectable()
 export class MatchService {
   constructor(private prisma: PrismaService) {}
 
-  async createMatch(teamAId: number, teamBId: number, tournamentId?: number) {
-    return this.prisma.match.create({
+  async createMatch(teamAId: number, teamBId: number, stageId?: number) {
+    const newMatch = await this.prisma.match.create({
       data: {
         teamAId,
         teamBId,
-        tournamentId,
+        stageId,
         scoreA: 0,
         scoreB: 0,
       },
       include: {
         teamA: true,
         teamB: true,
-        tournament: true,
+        stage: true,
       },
     });
+
+    return newMatch;
   }
 
-  async getMatches(tournamentId?: number) {
-    return this.prisma.match.findMany({
-      where: tournamentId ? { tournamentId } : {},
+  async getMatches(stageId?: number) {
+    const matches = await this.prisma.match.findMany({
+      where: stageId ? { stageId } : {},
       include: {
         teamA: true,
         teamB: true,
-        tournament: true,
-        rounds: true,
+        stage: true,
       },
     });
+
+    return matches;
   }
 
-  async addRound(
-    matchId: number,
-    roundNumber: number,
-    teamAScore: number,
-    teamBScore: number,
-  ) {
+  async addRound(matchId: number) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
     });
+
     if (!match) throw new Error('Match not found');
 
-    MatchLogic.validateRound(roundNumber, teamAScore, teamBScore);
+    if (match.status === 'COMPLETED' || match.status === 'SCHEDULED') {
+      throw new Error('Match is either completed or scheduled');
+    }
 
-    const roundScore = MatchLogic.calculateRoundScore(teamAScore, teamBScore);
-    const { newScoreA, newScoreB, winnerId } = MatchLogic.updateMatchScore(
-      match.scoreA,
-      match.scoreB,
-      roundScore.scoreA,
-      roundScore.scoreB,
-    );
-
-    await this.prisma.round.create({
+    await this.prisma.matchRound.create({
       data: {
         matchId,
-        roundNumber,
-        teamAScore,
-        teamBScore,
-      },
-    });
-
-    return this.prisma.match.update({
-      where: { id: matchId },
-      data: {
-        scoreA: newScoreA,
-        scoreB: newScoreB,
-        winnerId: winnerId
-          ? winnerId === 1
-            ? match.teamAId
-            : match.teamBId
-          : null,
+        roundNumber: match.currentRound + 1,
       },
     });
   }

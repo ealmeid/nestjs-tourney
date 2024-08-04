@@ -49,7 +49,7 @@ export class TeamService {
   }
 
   async addPlayerToTeam(teamId: number, playerId: number) {
-    return this.prisma.playerTeam.create({
+    return this.prisma.teamPlayer.create({
       data: {
         teamId,
         playerId,

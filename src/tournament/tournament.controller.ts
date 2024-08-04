@@ -1,45 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { TournamentService } from './tournament.service';
-import { initContract } from '@ts-rest/core';
-import { z } from 'zod';
-import { TsRestHandler } from '@ts-rest/nest';
-
-const c = initContract();
-
-const TournamentContract = c.router({
-  createTournament: {
-    method: 'POST',
-    path: '/tournaments',
-    responses: {
-      201: z.object({
-        id: z.number(),
-        name: z.string(),
-        leagueId: z.number().nullable(),
-      }),
-    },
-    body: z.object({
-      name: z.string(),
-      leagueId: z.number().optional(),
-    }),
-  },
-  getTournaments: {
-    method: 'GET',
-    path: '/tournaments',
-    responses: {
-      200: z.array(
-        z.object({
-          id: z.number(),
-          name: z.string(),
-          league: z.object({
-            id: z.number(),
-            name: z.string(),
-            description: z.string().optional(),
-          }),
-        }),
-      ),
-    },
-  },
-});
+import { TsRestHandler, tsRestHandler } from '@ts-rest/nest';
+import { TournamentContract } from './tournament.contract';
 
 @Controller()
 export class TournamentController {
@@ -47,24 +9,93 @@ export class TournamentController {
 
   @TsRestHandler(TournamentContract)
   async handler() {
-    return {
-      createTournament: async ({ body }) => {
+    return tsRestHandler(TournamentContract, {
+      createTournament: async ({ body: { name, leagueId } }) => {
         const tournament = await this.tournamentService.createTournament(
-          body.name,
-          body.leagueId,
+          name,
+          leagueId,
         );
+
         return {
           status: 201,
           body: tournament,
         };
       },
+      addStage: async ({ params: { tournamentId }, body }) => {
+        try {
+          const stage = await this.tournamentService.addStage(
+            parseInt(tournamentId),
+            body.bracketType,
+            body.name,
+          );
+
+          if (!stage) {
+            return {
+              status: 404,
+              body: 'Stage not found',
+            };
+          }
+
+          return {
+            status: 201,
+            body: stage,
+          };
+        } catch (error) {
+          return {
+            status: 500,
+            body: error,
+          };
+        }
+      },
+      getTournament: async ({ params: { tournamentId } }) => {
+        const tournament = await this.tournamentService.getTournament(
+          parseInt(tournamentId),
+        );
+
+        if (!tournament) {
+          return {
+            status: 404,
+            body: 'Tournament not found',
+          };
+        }
+
+        return {
+          status: 200,
+          body: tournament,
+        };
+      },
       getTournaments: async () => {
         const tournaments = await this.tournamentService.getTournaments();
+
         return {
           status: 200,
           body: tournaments,
         };
       },
-    };
+      startTournament: async ({ params: { tournamentId }, body: {} }) => {
+        try {
+          const tournament = await this.tournamentService.startTournament(
+            parseInt(tournamentId),
+          );
+
+          if (!tournament) {
+            return {
+              status: 404,
+              body: 'Tournament not found',
+            };
+          }
+
+          return {
+            status: 201,
+            body: tournament,
+          };
+        } catch (error) {
+          return {
+            status: 500,
+            body: 'An error occurred while starting the tournament',
+          };
+        }
+      },
+    });
   }
 }
